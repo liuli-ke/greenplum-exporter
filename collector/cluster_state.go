@@ -67,7 +67,7 @@ func (clusterStateScraper) Scrape(db *sql.DB, ch chan<- prometheus.Metric, ver i
 	logger.Infof("Query Database: %s", checkStateSql)
 
 	if err != nil {
-		ch <- prometheus.MustNewConstMetric(stateDesc, prometheus.GaugeValue, 0, "", "")
+		ch <- prometheus.MustNewConstMetric(stateDesc, prometheus.GaugeValue, 0, "", "", "")
 		logger.Errorf("get metrics for scraper, error:%v", err.Error())
 		return err
 	}
@@ -78,7 +78,7 @@ func (clusterStateScraper) Scrape(db *sql.DB, ch chan<- prometheus.Metric, ver i
 		var count int
 		err = rows.Scan(&count)
 		if err != nil {
-			ch <- prometheus.MustNewConstMetric(stateDesc, prometheus.GaugeValue, 0, "", "")
+			ch <- prometheus.MustNewConstMetric(stateDesc, prometheus.GaugeValue, 0, "", "", "")
 			logger.Errorf("get metrics for scraper, error:%v", err.Error())
 			return err
 		}
