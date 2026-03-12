@@ -2,12 +2,15 @@ package main
 
 import (
 	"greenplum-exporter/collector"
+	httpserver "greenplum-exporter/http"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	logger "github.com/prometheus/common/log"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	logger "github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"net/http"
+	"os"
 )
 
 /**
@@ -20,7 +23,11 @@ var (
 	listenAddress         = kingpin.Flag("web.listen-address", "web endpoint").Default("0.0.0.0:9297").String()
 	metricPath            = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	disableDefaultMetrics = kingpin.Flag("disableDefaultMetrics", "do not report default metrics(go metrics and process metrics)").Default("true").Bool()
+	webUIEnabled          = kingpin.Flag("web.ui-enabled", "enable web UI for metrics status").Default("true").Bool()
 )
+
+// 全局采集器实例
+var greenPlumCollector *collector.GreenPlumCollector
 
 var scrapers = map[collector.Scraper]bool{
 	collector.NewLocksScraper():         true,
@@ -33,10 +40,12 @@ var scrapers = map[collector.Scraper]bool{
 	collector.NewUsersScraper():         true,
 	collector.NewBgWriterStateScraper(): true,
 
-	collector.NewSystemScraper():        false,
-	collector.NewQueryScraper():         false,
-	collector.NewDynamicMemoryScraper(): false,
-	collector.NewDiskScraper():          false,
+	// 以下 4 个高级采集器需要 gp_metrics_views 扩展，默认禁用
+	// 可通过设置环境变量 ENABLE_ADVANCED_SCRAPERS=true 来启用
+	collector.NewSystemScraper():        isEnvTrue("ENABLE_SYSTEM_SCRAPER"),
+	collector.NewQueryScraper():         isEnvTrue("ENABLE_QUERY_SCRAPER"),
+	collector.NewDynamicMemoryScraper(): isEnvTrue("ENABLE_DYNAMIC_MEMORY_SCRAPER"),
+	collector.NewDiskScraper():          isEnvTrue("ENABLE_DISK_SCRAPER"),
 }
 
 var gathers prometheus.Gatherers
@@ -50,13 +59,44 @@ func main() {
 
 	metricsHandleFunc := newHandler(*disableDefaultMetrics, scrapers)
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc(*metricPath, metricsHandleFunc)
-
 	logger.Warnf("Greenplum exporter is starting and will listening on : %s", *listenAddress)
 
+	// 创建统一的 HTTP 多路复用器
+	mux := http.NewServeMux()
+
+	// 注册 Prometheus metrics 路由
+	mux.Handle(*metricPath, metricsHandleFunc)
+
+	// 如果启用了 Web UI，注册 Web UI 路由
+	if *webUIEnabled {
+		// 使用已创建的 global greenPlumCollector 实例
+		if greenPlumCollector == nil {
+			logger.Error("Greenplum collector is nil, please check initialization")
+			return
+		}
+
+		// 创建 Web 服务器（不指定地址，只使用路由）
+		webServer := httpserver.NewWebServer(greenPlumCollector)
+
+		// 注册 Web UI 路由到 mux
+		mux.HandleFunc("/", webServer.HomeHandler)
+		mux.HandleFunc("/metrics-status", webServer.MetricsStatusHandler)
+		mux.HandleFunc("/collector-info", webServer.CollectorInfoHandler)
+
+		logger.Warnf("Web UI enabled at: http://%s/", *listenAddress)
+	}
+
+	// 启动统一的 HTTP 服务器
 	logger.Error(http.ListenAndServe(*listenAddress, mux).Error())
+
+	// 阻塞主线程
+	select {}
+}
+
+// isEnvTrue 检查环境变量是否为 "true" (不区分大小写)
+func isEnvTrue(key string) bool {
+	val := os.Getenv(key)
+	return strings.ToLower(val) == "true"
 }
 
 func newHandler(disableDefaultMetrics bool, scrapers map[collector.Scraper]bool) http.HandlerFunc {
@@ -71,7 +111,8 @@ func newHandler(disableDefaultMetrics bool, scrapers map[collector.Scraper]bool)
 		}
 	}
 
-	greenPlumCollector := collector.NewCollector(enabledScrapers)
+	// 创建全局采集器实例
+	greenPlumCollector = collector.NewCollector(enabledScrapers)
 
 	registry.MustRegister(greenPlumCollector)
 
