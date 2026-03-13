@@ -9,4 +9,4 @@ RUN mkdir bin && go mod download && go build -o ./bin/greenplum_exporter
 FROM alpine:latest
 COPY --from=builder /home/bin/greenplum_exporter /home/greenplum_exporter
 EXPOSE      9297
-CMD  [ "/home/greenplum_exporter" , "--log.level=warn"]
+CMD /home/greenplum_exporter --log.level=${LOG_LEVEL:-warn}
