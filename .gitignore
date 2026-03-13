@@ -9,3 +9,5 @@
 
 ###
 bin/*
+vendor/
+/*.exe

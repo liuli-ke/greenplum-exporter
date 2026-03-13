@@ -1,0 +1,187 @@
+name: greenplum-exporter-build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: '发布标签'
+        required: true
+        type: string
+      ref:
+        description: '分支、标签或 commit SHA（默认：默认分支）'
+        required: false
+        default: ''
+        type: string
+
+# 设置环境变量
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE_NAME: greenplum-exporter
+  BINARY_NAME: greenplum_exporter
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      actions: read
+
+    steps:
+      # 1. 检出指定 ref 的代码
+      - name: 检出代码仓库
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+
+      # 2. 设置版本变量
+      - name: 设置变量
+        id: set-variables
+        run: |
+          TAG_VERSION="${{ github.event.inputs.tag_version }}"
+          echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
+
+      # 3. 设置 Docker Buildx
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 4. 登录 Docker Hub
+      - name: 登录到 Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      # 5. 设置 Go 环境
+      - name: 设置 Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.14.15'  # 根据项目实际需求调整
+
+      # 6. 编译二进制文件（Linux amd64/arm64, Windows amd64）
+      - name: 编译二进制文件
+        run: |
+          mkdir -p release_binaries
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -o release_binaries/${BINARY_NAME}-${TAG_VERSION}.linux-amd64 .
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -o release_binaries/${BINARY_NAME}-${TAG_VERSION}.linux-arm64 .
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -o release_binaries/${BINARY_NAME}-${TAG_VERSION}.windows-amd64.exe .
+
+      # 7. 生成二进制文件 MD5 校验和
+      - name: 生成二进制文件 MD5
+        run: |
+          cd release_binaries
+          for file in *; do
+            if [ -f "$file" ]; then
+              md5sum "$file" > "${file}.md5"
+            fi
+          done
+
+      # 8. 构建并推送多架构 Docker 镜像（使用项目根目录 Dockerfile）
+      - name: 构建并推送 Docker 镜像
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 9. 下载并打包多架构镜像（分别拉取两个平台的镜像，合并成一个 tar 包）
+      - name: 下载并打包多架构镜像
+        run: |
+          IMAGE_FULL="${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}"
+          # 拉取 amd64 镜像
+          docker pull --platform linux/amd64 ${IMAGE_FULL}
+          docker tag ${IMAGE_FULL} "${IMAGE_FULL}-amd64"
+          # 拉取 arm64 镜像
+          docker pull --platform linux/arm64 ${IMAGE_FULL}
+          docker tag ${IMAGE_FULL} "${IMAGE_FULL}-arm64"
+          # 打包两个镜像为一个 tar.gz
+          docker save "${IMAGE_FULL}-amd64" "${IMAGE_FULL}-arm64" | gzip > "greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz"
+          # 生成 MD5
+          md5sum "greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz" > "greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz.md5"
+
+      # 10. 准备 Release 文件
+      - name: 准备 Release 文件
+        run: |
+          mkdir -p release
+          # 复制二进制文件及其 md5
+          cp release_binaries/* release/
+          # 复制多架构镜像包及其 md5
+          cp greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz release/
+          cp greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz.md5 release/
+          # 生成版本说明文件 CHANGELOG.md
+          cat > release/CHANGELOG.md << EOF
+          # Greenplum Exporter ${TAG_VERSION}
+
+          ## 构建信息
+          - 标签: ${TAG_VERSION}
+          - 构建时间: $(date -u)
+          - Docker 镜像: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}
+
+          ## 包含文件
+          - 二进制文件（Linux amd64 / arm64, Windows amd64）及 MD5 校验和
+          - 多架构 Docker 镜像包 (linux/amd64, linux/arm64)
+
+          ## 使用说明
+          ### Docker 镜像
+          \`\`\`bash
+          docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}
+          docker run -p 9000:9000 ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}
+          \`\`\`
+
+          ### 多架构镜像包离线加载
+          \`\`\`bash
+          gunzip -c greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz | docker load
+          # 或
+          docker load < greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz
+          \`\`\`
+          加载后获得两个镜像：\`${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}-amd64\` 和 \`-arm64\`。
+
+          ### 二进制文件
+          根据您的操作系统选择对应的二进制文件，添加执行权限后直接运行。
+          EOF
+
+      # 11. 创建 GitHub Release 并上传所有产物
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_VERSION }}
+          name: ${{ env.TAG_VERSION }}
+          body_path: release/CHANGELOG.md
+          draft: false
+          prerelease: false
+          files: |
+            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-amd64
+            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-amd64.md5
+            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-arm64
+            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-arm64.md5
+            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.windows-amd64.exe
+            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.windows-amd64.exe.md5
+            release/greenplum-exporter-${{ env.TAG_VERSION }}-multi-arch-images.tar.gz
+            release/greenplum-exporter-${{ env.TAG_VERSION }}-multi-arch-images.tar.gz.md5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 12. 显示构建信息
+      - name: 显示构建信息
+        run: |
+          echo "========================================="
+          echo "构建和发布完成!"
+          echo "========================================="
+          echo "Docker 镜像: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}"
+          echo "GitHub Release 标签: ${TAG_VERSION}"
+          echo "二进制文件已上传至 Release"
+          echo "========================================="
+
+      # 13. 登出 Docker Hub（无论成功或失败均执行）
+      - name: 登出 Docker Hub
+        if: always()
+        run: docker logout
