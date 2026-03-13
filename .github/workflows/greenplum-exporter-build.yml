@@ -134,7 +134,7 @@ jobs:
           ### Docker 镜像
           \`\`\`bash
           docker pull ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}
-          docker run -p 9000:9000 ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}
+          docker run -p 9297:9297 ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}
           \`\`\`
 
           ### 多架构镜像包离线加载
@@ -143,11 +143,12 @@ jobs:
           # 或
           docker load < greenplum-exporter-${TAG_VERSION}-multi-arch-images.tar.gz
           \`\`\`
-          加载后获得两个镜像：\`${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}-amd64\` 和 \`-arm64\`。
+          加载后获得两个镜像：\`${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}-amd64\` 和 \`${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_VERSION}-arm64\`。
 
           ### 二进制文件
           根据您的操作系统选择对应的二进制文件，添加执行权限后直接运行。
           EOF
+          ls -la release/
 
       # 11. 创建 GitHub Release 并上传所有产物
       - name: 创建 Release
