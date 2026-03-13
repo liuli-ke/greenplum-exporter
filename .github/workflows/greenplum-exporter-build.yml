@@ -160,12 +160,12 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-amd64
-            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-amd64.md5
-            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-arm64
-            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.linux-arm64.md5
-            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.windows-amd64.exe
-            release/${BINARY_NAME}-${{ env.TAG_VERSION }}.windows-amd64.exe.md5
+            release/${{ env.BINARY_NAME }}-${{ env.TAG_VERSION }}.linux-amd64
+            release/${{ env.BINARY_NAME }}-${{ env.TAG_VERSION }}.linux-amd64.md5
+            release/${{ env.BINARY_NAME }}-${{ env.TAG_VERSION }}.linux-arm64
+            release/${{ env.BINARY_NAME }}-${{ env.TAG_VERSION }}.linux-arm64.md5
+            release/${{ env.BINARY_NAME }}-${{ env.TAG_VERSION }}.windows-amd64.exe
+            release/${{ env.BINARY_NAME }}-${{ env.TAG_VERSION }}.windows-amd64.exe.md5
             release/greenplum-exporter-${{ env.TAG_VERSION }}-multi-arch-images.tar.gz
             release/greenplum-exporter-${{ env.TAG_VERSION }}-multi-arch-images.tar.gz.md5
         env:
