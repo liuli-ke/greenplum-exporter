@@ -82,6 +82,7 @@ func main() {
 		mux.HandleFunc("/", webServer.HomeHandler)
 		mux.HandleFunc("/metrics-status", webServer.MetricsStatusHandler)
 		mux.HandleFunc("/collector-info", webServer.CollectorInfoHandler)
+		mux.HandleFunc("/metrics-web", webServer.MetricsWebHandler)
 
 		logger.Warnf("Web UI enabled at: http://%s/", *listenAddress)
 	}

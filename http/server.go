@@ -168,6 +168,19 @@ func isEnvTrue(key string) bool {
 	return strings.ToLower(val) == "true"
 }
 
+// MetricsWebHandler Prometheus 指标 Web 页面处理函数
+func (s *WebServer) MetricsWebHandler(w http.ResponseWriter, r *http.Request) {
+	// 使用 JavaScript fetch 来动态加载 /metrics 内容
+	data := map[string]interface{}{
+		"Title": "Prometheus 指标",
+	}
+
+	tmpl := template.Must(template.New("metrics-web").Parse(metricsWebTemplate))
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 const homeTemplate = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -254,7 +267,7 @@ const homeTemplate = `<!DOCTYPE html>
             <h3>🔧 采集器信息</h3>
             <p>了解所有可用的采集器及其功能说明</p>
         </a>
-        <a href="/metrics" class="nav-card">
+        <a href="/metrics-web" class="nav-card">
             <h3>📈 Prometheus 指标</h3>
             <p>访问 Prometheus 格式的监控指标数据</p>
         </a>
@@ -383,7 +396,7 @@ const metricsStatusTemplate = `<!DOCTYPE html>
             <a href="/" class="back-link">🏠 首页</a>
             <a href="/metrics-status" class="nav-link">📊 指标状态</a>
             <a href="/collector-info" class="nav-link">🔧 采集器信息</a>
-            <a href="/metrics" class="nav-link">📈 Prometheus 指标</a>
+            <a href="/metrics-web" class="nav-link">📈 Prometheus 指标</a>
         </div>
         <div class="auto-refresh-info">
             🔄 自动刷新中 (<span id="countdown">5</span>秒后刷新)
@@ -588,7 +601,7 @@ const collectorInfoTemplate = `<!DOCTYPE html>
             <a href="/" class="back-link">🏠 首页</a>
             <a href="/metrics-status" class="nav-link">📊 指标状态</a>
             <a href="/collector-info" class="nav-link">🔧 采集器信息</a>
-            <a href="/metrics" class="nav-link">📈 Prometheus 指标</a>
+            <a href="/metrics-web" class="nav-link">📈 Prometheus 指标</a>
         </div>
     </div>
 
@@ -694,5 +707,137 @@ export ENABLE_SYSTEM_SCRAPER=true ENABLE_QUERY_SCRAPER=true ENABLE_DYNAMIC_MEMOR
             </ul>
         </div>
     </div>
+</body>
+</html>`
+
+const metricsWebTemplate = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        .nav-link:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        .back-link {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link:hover {
+            opacity: 0.8;
+        }
+        .content {
+            padding: 20px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .metrics-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .metrics-text {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #333;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #e74c3c;
+            font-size: 18px;
+        }
+        .refresh-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .refresh-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav-links">
+            <a href="/" class="back-link">🏠 首页</a>
+            <a href="/metrics-status" class="nav-link">📊 指标状态</a>
+            <a href="/collector-info" class="nav-link">🔧 采集器信息</a>
+            <a href="/metrics-web" class="nav-link">📈 Prometheus 指标</a>
+        </div>
+        <button class="refresh-btn" onclick="loadMetrics()">🔄 刷新</button>
+    </div>
+
+    <div class="content">
+        <div class="metrics-container">
+            <div id="metrics-content" class="loading">加载中...</div>
+        </div>
+    </div>
+
+    <script>
+        async function loadMetrics() {
+            const contentDiv = document.getElementById('metrics-content');
+            contentDiv.className = 'loading';
+            contentDiv.textContent = '加载中...';
+            
+            try {
+                const response = await fetch('/metrics');
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                const text = await response.text();
+                contentDiv.className = 'metrics-text';
+                contentDiv.textContent = text;
+            } catch (error) {
+                contentDiv.className = 'error';
+                contentDiv.textContent = '加载失败: ' + error.message;
+            }
+        }
+
+        // 页面加载时自动获取数据
+        window.onload = loadMetrics;
+    </script>
 </body>
 </html>`
