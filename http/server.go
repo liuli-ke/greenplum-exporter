@@ -81,16 +81,52 @@ func (s *WebServer) CollectorInfoHandler(w http.ResponseWriter, r *http.Request)
 		"Title":       "采集器信息",
 		"Description": "Greenplum Exporter 采集器详细信息",
 		"EnvStatus":   envStatus,
-		"Scrapers": []string{
-			"📊 cluster_state_scraper - 集群状态采集器 - 监控 Greenplum 集群的可用性、运行时间、同步状态和配置加载时间",
-			"🔌 connections_scraper - 连接数采集器 - 统计当前总连接数、空闲/活跃/运行/等待的连接数",
-			"🔢 max_connection_scraper - 最大连接数采集器 - 获取数据库配置的最大连接数限制",
-			"💾 segment_scraper - Segment 节点采集器 - 监控所有 Segment 节点的状态、角色和模式",
-			"👥 users_scraper - 用户采集器 - 列出所有数据库用户并统计用户总数",
-			"🔒 locks_scraper - 锁信息采集器 - 显示当前所有活跃的数据库锁详情",
-			"✍️ bg_writer_state_scraper - 后台写入器采集器 - 监控检查点、缓冲区使用等 BG Writer 统计信息",
-			"📈 database_size_scraper - 数据库大小采集器 - 统计每个数据库占用的存储空间大小",
-			"🔍 connections_detail_scraper - 连接详情采集器 - 按用户和客户端 IP 分组统计连接数详情",
+		"Scrapers": []map[string]string{
+			{
+				"name":    "📊 cluster_state_scraper",
+				"desc":    "集群状态采集器 - 监控 Greenplum 集群的可用性、运行时间、同步状态和配置加载时间",
+				"metrics": "4 个指标：greenplum_cluster_state, greenplum_cluster_uptime, greenplum_cluster_sync, greenplum_cluster_config_last_load_time_seconds",
+			},
+			{
+				"name":    "🔌 connections_scraper",
+				"desc":    "连接数采集器 - 统计当前总连接数、空闲/活跃/运行/等待的连接数",
+				"metrics": "5 个指标：greenplum_cluster_total_connections, greenplum_cluster_idle_connections, greenplum_cluster_active_connections, greenplum_cluster_running_connections, greenplum_cluster_waiting_connections",
+			},
+			{
+				"name":    "🔢 max_connection_scraper",
+				"desc":    "最大连接数采集器 - 获取数据库配置的最大连接数限制",
+				"metrics": "1 个指标：greenplum_cluster_max_connections",
+			},
+			{
+				"name":    "💾 segment_scraper",
+				"desc":    "Segment 节点采集器 - 监控所有 Segment 节点的状态、角色、模式和磁盘空间",
+				"metrics": "6 个指标：greenplum_node_segment_status, greenplum_node_segment_role, greenplum_node_segment_mode, greenplum_node_segment_disk_free_mb_size, greenplum_node_segment_disk_sum_free_mb_size, greenplum_node_segment_disk_sum_device_free_mb_size",
+			},
+			{
+				"name":    "👥 users_scraper",
+				"desc":    "用户采集器 - 列出所有数据库用户并统计用户总数",
+				"metrics": "2 个指标：greenplum_server_users_name_list, greenplum_server_users_total_count",
+			},
+			{
+				"name":    "🔒 locks_scraper",
+				"desc":    "锁信息采集器 - 显示当前所有活跃的数据库锁详情",
+				"metrics": "1 个指标：greenplum_server_locks_table_detail",
+			},
+			{
+				"name":    "✍️ bg_writer_state_scraper",
+				"desc":    "后台写入器采集器 - 监控检查点、缓冲区使用等 BG Writer 统计信息和缓存命中率",
+				"metrics": "13 个指标：greenplum_server_bgwriter_* (11 个), greenplum_server_database_hit_cache_percent_rate, greenplum_server_database_transition_commit_percent_rate",
+			},
+			{
+				"name":    "📈 database_size_scraper",
+				"desc":    "数据库大小采集器 - 统计每个数据库占用的存储空间大小和表数量",
+				"metrics": "2 个指标：greenplum_node_database_name_mb_size, greenplum_node_database_table_total_count",
+			},
+			{
+				"name":    "🔍 connections_detail_scraper",
+				"desc":    "连接详情采集器 - 按用户和客户端 IP 分组统计连接数详情",
+				"metrics": "5 个指标：greenplum_cluster_total_connections_per_user, greenplum_cluster_active_connections_per_user, greenplum_cluster_idle_connections_per_user, greenplum_cluster_total_connections_per_client, greenplum_cluster_active_connections_per_client",
+			},
 		},
 		"AdvancedScrapers": []map[string]string{
 			{
@@ -567,11 +603,13 @@ const collectorInfoTemplate = `<!DOCTYPE html>
 
     <div class="info-card">
         <h2>📦 核心采集器（已启用）</h2>
-        <ul class="scraper-list">
-            {{range .Scrapers}}
-            <li class="scraper-item">{{.}}</li>
-            {{end}}
-        </ul>
+        {{range .Scrapers}}
+        <div class="scraper-item" style="margin-bottom: 15px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 1.1em;">{{index . "name"}}</p>
+            <p style="margin: 0 0 8px 0; color: #555;">{{index . "desc"}}</p>
+            <p style="margin: 0;"><strong style="color: #27ae60;">📊 指标列表：</strong> {{index . "metrics"}}</p>
+        </div>
+        {{end}}
     </div>
 
     <div class="info-card">

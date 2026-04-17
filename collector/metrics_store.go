@@ -141,16 +141,16 @@ func getScraperMetrics(name string) string {
 		"cluster_state_scraper":      "greenplum_cluster_state, greenplum_cluster_uptime, greenplum_cluster_sync, greenplum_cluster_config_last_load_time_seconds",
 		"connections_scraper":        "greenplum_cluster_total_connections, greenplum_cluster_idle_connections, greenplum_cluster_active_connections, greenplum_cluster_running_connections, greenplum_cluster_waiting_connections",
 		"max_connection_scraper":     "greenplum_cluster_max_connections",
-		"segment_scraper":            "greenplum_node_segment_status, greenplum_node_segment_role, greenplum_node_segment_mode",
+		"segment_scraper":            "greenplum_node_segment_status, greenplum_node_segment_role, greenplum_node_segment_mode, greenplum_node_segment_disk_free_mb_size, greenplum_node_segment_disk_sum_free_mb_size, greenplum_node_segment_disk_sum_device_free_mb_size",
 		"users_scraper":              "greenplum_server_users_name_list, greenplum_server_users_total_count",
 		"locks_scraper":              "greenplum_server_locks_table_detail",
-		"bg_writer_state_scraper":    "greenplum_server_bgwriter_* (11 个 BG Writer 统计指标)",
-		"database_size_scraper":      "greenplum_node_database_name_mb_size",
+		"bg_writer_state_scraper":    "greenplum_server_bgwriter_* (11 个 BG Writer 统计指标), greenplum_server_database_hit_cache_percent_rate, greenplum_server_database_transition_commit_percent_rate",
+		"database_size_scraper":      "greenplum_node_database_name_mb_size, greenplum_node_database_table_total_count",
 		"connections_detail_scraper": "greenplum_cluster_total_connections_per_user, greenplum_cluster_active_connections_per_user, greenplum_cluster_idle_connections_per_user, greenplum_cluster_total_connections_per_client, greenplum_cluster_active_connections_per_client",
-		"system_scraper":             "greenplum_server_cpu_*, greenplum_server_memory_*, greenplum_server_disk_*, greenplum_server_network_* (需要扩展)",
-		"queries_scraper":            "greenplum_server_queries_* (需要扩展)",
-		"dynamic_memory_scraper":     "greenplum_server_memory_dynamic_* (需要扩展)",
-		"disk_scraper":               "greenplum_server_disk_free_* (需要扩展)",
+		"system_scraper":             "greenplum_node_cpu_* (7 个), greenplum_node_mem_* (8 个), greenplum_node_disk_* (4 个), greenplum_node_net_* (4 个), greenplum_node_swap_* (3 个)",
+		"queries_scraper":            "greenplum_cluster_total_queries, greenplum_cluster_running_queries, greenplum_cluster_queued_queries",
+		"dynamic_memory_scraper":     "greenplum_node_dynamic_memory_used_mb, greenplum_node_dynamic_memory_available_mb",
+		"disk_scraper":               "greenplum_node_fs_total_bytes, greenplum_node_fs_used_bytes, greenplum_node_fs_available_bytes",
 	}
 	if m, ok := metrics[name]; ok {
 		return m
