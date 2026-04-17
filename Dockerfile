@@ -1,6 +1,6 @@
 # alpine build
 FROM golang:1.14.15-alpine3.13 AS builder
-RUN go env -w GO111MODULE=on && go env -w GOPROXY=https://goproxy.io,direct
+RUN go env -w GO111MODULE=on # && go env -w GOPROXY=https://goproxy.io,direct
 WORKDIR /home
 ADD . .
 RUN mkdir bin && go mod download && go build -o ./bin/greenplum_exporter
