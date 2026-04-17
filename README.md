@@ -192,7 +192,7 @@ export ENABLE_DISK_SCRAPER=true
 
 - **Dashboard ID**: 13822
 - **Dashboard URL**: https://grafana.com/grafana/dashboards/13822
-- **配置教程**: https://blog.csdn.net/inrgihc/article/details/108686638
+- 如果使用v1.1.2及以上版本，请在项目[grafana](./grafana)目录下使用对应版本文件(如果对应版本的json文件不存在，请使用对应版本向下的最近版本)
 
 ### 六、问题反馈
 
