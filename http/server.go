@@ -34,7 +34,7 @@ func (s *WebServer) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{
 		"Title":       "Greenplum Exporter",
-		"Version":     "1.1.1",
+		"Version":     "1.1.2",
 		"Description": "Greenplum Database Prometheus Exporter",
 		"Time":        time.Now().Format("2006-01-02 15:04:05"),
 	}

@@ -47,7 +47,7 @@ export GPDB_DATA_SOURCE_URL=postgres://gpadmin:password@10.17.20.11:5432/postgre
 - docker运行
 
 ```
-docker run -d -p 9297:9297 -e GPDB_DATA_SOURCE_URL=postgres://gpadmin:password@10.17.20.11:5432/postgres?sslmode=disable liulik/greenplum-exporter:v1.1.1 
+docker run -d -p 9297:9297 -e GPDB_DATA_SOURCE_URL=postgres://gpadmin:password@10.17.20.11:5432/postgres?sslmode=disable liulik/greenplum-exporter:v1.1.2 
 ```
 
 注：环境变量GPDB_DATA_SOURCE_URL指定了连接Greenplum数据库的连接串（请使用gpadmin账号连接postgres库），该连接串以postgres://为前缀，具体格式如下：
@@ -112,23 +112,25 @@ export ENABLE_DISK_SCRAPER=true
 | 10 | greenplum_node_segment_status | Gauge | hostname; address; dbid; content; preferred_role; port | boolean | Segment 状态：1→up; 0→down | segment_scraper |
 | 11 | greenplum_node_segment_role | Gauge | hostname; address; dbid; content; preferred_role; port | int | Segment 角色：1→primary; 2→mirror | segment_scraper |
 | 12 | greenplum_node_segment_mode | Gauge | hostname; address; dbid; content; preferred_role; port | int | Segment 模式：1→synced; 2→resyncing; 3→change tracking; 4→not syncing | segment_scraper |
-| 13 | greenplum_node_segment_disk_free_mb_size | Gauge | hostname | MB | Segment 主机磁盘剩余空间 | segment_scraper |
-| 14 | greenplum_cluster_total_connections_per_client | Gauge | client_addr | int | 每个客户端的连接数 | conn_detail_scraper |
-| 15 | greenplum_cluster_idle_connections_per_client | Gauge | client_addr | int | 每个客户端的空闲连接数 | conn_detail_scraper |
-| 16 | greenplum_cluster_active_connections_per_client | Gauge | client_addr | int | 每个客户端的活跃连接数 | conn_detail_scraper |
-| 17 | greenplum_cluster_total_online_user_count | Gauge | - | int | 在线用户账号数 | users_scraper |
-| 18 | greenplum_cluster_total_client_count | Gauge | - | int | 当前所有连接的客户端总数 | users_scraper |
-| 19 | greenplum_cluster_total_connections_per_user | Gauge | usename | int | 每个用户的连接数 | users_scraper |
-| 20 | greenplum_cluster_idle_connections_per_user | Gauge | usename | int | 每个用户的空闲连接数 | users_scraper |
-| 21 | greenplum_cluster_active_connections_per_user | Gauge | usename | int | 每个用户的活跃连接数 | users_scraper |
-| 22 | greenplum_cluster_config_last_load_time_seconds | Gauge | - | seconds | 系统配置最后加载时间 | bg_writer_state_scraper |
-| 23 | greenplum_node_database_name_mb_size | Gauge | dbname | MB | 每个数据库占用的存储空间 | database_size_scraper |
-| 24 | greenplum_node_database_table_total_count | Gauge | dbname | int | 每个数据库内表的总数量 | database_size_scraper |
-| 25 | greenplum_server_locks_table_detail | Gauge | pid; datname; usename; locktype; mode; application_name; state | int | 锁详细信息 | locks_scraper |
-| 26 | greenplum_server_database_hit_cache_percent_rate | Gauge | - | float | 缓存命中率 | bg_writer_state_scraper |
-| 27 | greenplum_server_database_transition_commit_percent_rate | Gauge | - | float | 事务提交率 | bg_writer_state_scraper |
-| 28 | greenplum_server_users_name_list | Gauge | usename | int | 用户列表 | users_scraper |
-| 29 | greenplum_server_users_total_count | Gauge | - | int | 用户总数 | users_scraper |
+| 13 | greenplum_node_segment_disk_free_mb_size | Gauge | hostname | MB | Segment 主机磁盘平均剩余空间（按目录平均） | segment_scraper |
+| 14 | greenplum_node_segment_disk_sum_free_mb_size | Gauge | hostname | MB | Segment 主机磁盘总剩余空间（所有目录累加） | segment_scraper |
+| 15 | greenplum_node_segment_disk_sum_device_free_mb_size | Gauge | hostname; device | MB | Segment 主机每个设备的磁盘剩余空间 | segment_scraper |
+| 16 | greenplum_cluster_total_connections_per_client | Gauge | client_addr | int | 每个客户端的连接数 | conn_detail_scraper |
+| 17 | greenplum_cluster_idle_connections_per_client | Gauge | client_addr | int | 每个客户端的空闲连接数 | conn_detail_scraper |
+| 18 | greenplum_cluster_active_connections_per_client | Gauge | client_addr | int | 每个客户端的活跃连接数 | conn_detail_scraper |
+| 19 | greenplum_cluster_total_online_user_count | Gauge | - | int | 在线用户账号数 | users_scraper |
+| 20 | greenplum_cluster_total_client_count | Gauge | - | int | 当前所有连接的客户端总数 | users_scraper |
+| 21 | greenplum_cluster_total_connections_per_user | Gauge | usename | int | 每个用户的连接数 | users_scraper |
+| 22 | greenplum_cluster_idle_connections_per_user | Gauge | usename | int | 每个用户的空闲连接数 | users_scraper |
+| 23 | greenplum_cluster_active_connections_per_user | Gauge | usename | int | 每个用户的活跃连接数 | users_scraper |
+| 24 | greenplum_cluster_config_last_load_time_seconds | Gauge | - | seconds | 系统配置最后加载时间 | bg_writer_state_scraper |
+| 25 | greenplum_node_database_name_mb_size | Gauge | dbname | MB | 每个数据库占用的存储空间 | database_size_scraper |
+| 26 | greenplum_node_database_table_total_count | Gauge | dbname | int | 每个数据库内表的总数量 | database_size_scraper |
+| 27 | greenplum_server_locks_table_detail | Gauge | pid; datname; usename; locktype; mode; application_name; state | int | 锁详细信息 | locks_scraper |
+| 28 | greenplum_server_database_hit_cache_percent_rate | Gauge | - | float | 缓存命中率 | bg_writer_state_scraper |
+| 29 | greenplum_server_database_transition_commit_percent_rate | Gauge | - | float | 事务提交率 | bg_writer_state_scraper |
+| 30 | greenplum_server_users_name_list | Gauge | usename | int | 用户列表 | users_scraper |
+| 31 | greenplum_server_users_total_count | Gauge | - | int | 用户总数 | users_scraper |
 
 #### Exporter 自身指标
 
@@ -179,7 +181,12 @@ export ENABLE_DISK_SCRAPER=true
 
 - **首页** (`http://localhost:9297/`) - 显示 exporter 概览信息
 - **指标状态** (`http://localhost:9297/metrics-status`) - 显示各采集器的运行状态、最后成功/失败时间
-- **采集器信息** (`http://localhost:9297/collector-info`) - 显示所有采集器的详细说明和使用方法
+- **采集器信息** (`http://localhost:9297/collector-info`) - 显示所有采集器的详细说明和指标列表
+- **Prometheus 指标** (`http://localhost:9297/metrics-web`) - 以 Web 页面形式展示 Prometheus 指标数据，带有导航菜单和刷新功能
+
+**注意：**
+- `/metrics` - 原始 Prometheus 格式数据，供 Prometheus Server 抓取使用
+- `/metrics-web` - 带菜单栏的友好 Web 界面，方便人工查看指标数据
 
 ### 五、Grafana 仪表盘
 
